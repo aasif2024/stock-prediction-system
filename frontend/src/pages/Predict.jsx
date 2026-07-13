@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { companyAPI, predictAPI, historyAPI, watchlistAPI } from "../api/api";
+import { companyAPI, predictAPI, watchlistAPI } from "../api/api";
 import {
   LineChart,
   Line,
@@ -12,7 +12,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   ReferenceLine,
   Label,
@@ -143,7 +142,6 @@ export default function Predict() {
 
 
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   useEffect(() => {
     if (!result && historicalRows.length > 0) {
@@ -175,7 +173,7 @@ export default function Predict() {
       }
       setChartData(chartSeries);
     }
-  }, [form.close, historicalRows, result]);
+  }, [form.close, form.open, form.high, form.low, historicalRows, result]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
