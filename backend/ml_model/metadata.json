@@ -1,0 +1,58 @@
+{
+  "best_model": "Linear Regression",
+  "feature_columns": [
+    "open",
+    "high",
+    "low",
+    "tradedQty",
+    "range",
+    "gap",
+    "pct_change",
+    "ma_5",
+    "ma_10",
+    "ma_20",
+    "vol_5",
+    "vol_10",
+    "ema_12",
+    "ema_26",
+    "macd",
+    "bb_width",
+    "rsi",
+    "close_lag_1",
+    "close_lag_2",
+    "close_lag_3",
+    "close_lag_5",
+    "vol_lag_1",
+    "vol_lag_2",
+    "company_code"
+  ],
+  "companies": [
+    "AMBUJACEM",
+    "BANKINDIA",
+    "DABUR",
+    "EVEREADY",
+    "JSL",
+    "MARICO",
+    "TATAMOTORS"
+  ],
+  "metrics": {
+    "Linear Regression": {
+      "MAE": 5.853639279625561,
+      "MSE": 83.39346772932535,
+      "RMSE": 9.132002394290387,
+      "R2": 0.9988625907259628
+    },
+    "Random Forest": {
+      "MAE": 42.09624268966634,
+      "MSE": 15543.18737083273,
+      "RMSE": 124.6723199865661,
+      "R2": 0.788005392447964
+    },
+    "Gradient Boosting": {
+      "MAE": 42.69861884840333,
+      "MSE": 15771.464443306348,
+      "RMSE": 125.58449125312546,
+      "R2": 0.7848919056683485
+    }
+  }
+}

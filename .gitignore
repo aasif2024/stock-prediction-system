@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Environment secrets
+backend/.env
+
+# Node / React
+frontend/node_modules/
+frontend/build/
+
+# ML artifacts (regenerate with train_model.py; keep out of git if large)
+machine_learning/saved_model/*.pkl
+backend/ml_model/*.pkl
+
+# OS
+.DS_Store
