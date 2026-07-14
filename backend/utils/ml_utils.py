@@ -198,11 +198,17 @@ def get_historical_data(equity_name: str, days: int = 30) -> list:
     Fetches real-time historical data from Yahoo Finance for the given NSE equity.
     Returns the last `days` of closing prices formatted for the frontend chart.
     """
+    import requests
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    })
+    
     ticker_symbol = f"{equity_name}.NS"
     try:
         # Fetching a bit more data to ensure we get `days` trading days
         period = f"{days + 15}d"
-        ticker = yf.Ticker(ticker_symbol)
+        ticker = yf.Ticker(ticker_symbol, session=session)
         df = ticker.history(period=period)
         
         if df.empty:
@@ -229,9 +235,15 @@ def get_latest_live_data(equity_name: str) -> dict:
     """
     Fetches the very latest (today's/last trading day) OHLCV data from Yahoo Finance.
     """
+    import requests
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    })
+    
     ticker_symbol = f"{equity_name}.NS"
     try:
-        ticker = yf.Ticker(ticker_symbol)
+        ticker = yf.Ticker(ticker_symbol, session=session)
         df = ticker.history(period="5d") # Fetch last 5 days to guarantee at least 1 valid day
         if df.empty:
             return {}
@@ -277,9 +289,15 @@ def get_company_news(equity_name: str) -> list:
     """
     Fetches the latest news articles for a given company using Yahoo Finance.
     """
+    import requests
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    })
+    
     ticker_symbol = f"{equity_name}.NS"
     try:
-        ticker = yf.Ticker(ticker_symbol)
+        ticker = yf.Ticker(ticker_symbol, session=session)
         # Yahoo finance returns a list of dictionaries for news
         news_data = ticker.news
         if not news_data:
