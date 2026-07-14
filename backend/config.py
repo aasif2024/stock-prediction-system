@@ -42,4 +42,4 @@ class Config:
     METADATA_PATH = ML_MODEL_DIR / "metadata.json"
 
     # CORS
-    CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+    CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000,https://stock-prediction-system-seven.vercel.app").split(",")
