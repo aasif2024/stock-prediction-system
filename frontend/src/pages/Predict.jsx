@@ -354,47 +354,45 @@ export default function Predict() {
             {/* Company Dropdown */}
             <div>
               <label style={{ display: "block", marginBottom: "8px", fontWeight: "700" }}>Company</label>
-              <div style={{ display: "flex", gap: "12px", alignItems: "center", width: "100%" }}>
-                <span style={{ fontSize: "1.6rem", flexShrink: 0 }} title="Company Selector">🏢</span>
-                <select
-                  name="equity_name"
-                  value={form.equity_name}
-                  onChange={(e) => {
-                    const newEquity = e.target.value;
-                    setForm({ ...form, equity_name: newEquity });
-                    handleLoadCompanyData(newEquity);
-                  }}
-                  required
-                  style={{ width: "100%", height: "48px" }}
-                >
-                  <option value="">Select a company…</option>
-                  {filteredCompanies.map((c) => (
-                    <option key={c.id} value={c.equity_name}>
-                      {c.company_name} ({c.equity_name})
-                    </option>
-                  ))}
-                </select>
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
+                <div style={{ display: "flex", gap: "12px", alignItems: "center", width: "100%" }}>
+                  <span style={{ fontSize: "1.6rem", flexShrink: 0 }} title="Company Selector">🏢</span>
+                  <select
+                    name="equity_name"
+                    value={form.equity_name}
+                    onChange={(e) => {
+                      const newEquity = e.target.value;
+                      setForm({ ...form, equity_name: newEquity });
+                      handleLoadCompanyData(newEquity);
+                    }}
+                    required
+                    style={{ width: "100%", height: "48px" }}
+                  >
+                    <option value="">Select a company…</option>
+                    {filteredCompanies.map((c) => (
+                      <option key={c.id} value={c.equity_name}>
+                        {c.company_name} ({c.equity_name})
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 {form.equity_name && (
                   <button
                     type="button"
+                    className="btn-primary"
                     onClick={() => {
                       setSharesToBuy(0);
                       setBuyPrice(form.close || 0); // Default buy price to live close
                       setShowPortfolioModal(true);
                     }}
                     style={{
-                      flexShrink: 0,
-                      background: "rgba(255, 255, 255, 0.1)",
-                      border: "1px solid var(--glass-border)",
-                      color: "var(--text)",
-                      padding: "12px 16px",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                      fontWeight: "600",
+                      width: "100%",
                       height: "48px",
                       display: "flex",
+                      justifyContent: "center",
                       alignItems: "center",
-                      gap: "8px"
+                      gap: "8px",
+                      fontSize: "1rem"
                     }}
                   >
                     ⭐ {watchlistStatus || "Add to Watchlist"}

@@ -13,7 +13,7 @@ export default function Home() {
         <p>
           StockSense combines historical NSE data with machine learning —
           Linear Regression, Random Forest &amp; Gradient Boosting — to forecast
-          next-day closing prices. Backed by RSI, MACD &amp; Bollinger Bands.
+          next-day closing prices. Backend by RSI, MACD &amp; Bollinger Bands.
         </p>
         <div className="hero-actions">
           <Link to={isAuthenticated ? "/predict" : "/register"} className="btn-primary">
