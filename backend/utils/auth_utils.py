@@ -8,6 +8,10 @@ Password hashing (bcrypt) and JWT issuing/validation, plus a
 from functools import wraps
 from datetime import datetime, timedelta, timezone
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 import bcrypt
 import jwt
 from flask import request, jsonify, g
@@ -36,6 +40,53 @@ def generate_token(user_id: int, email: str) -> str:
 
 def decode_token(token: str) -> dict:
     return jwt.decode(token, Config.JWT_SECRET, algorithms=["HS256"])
+
+
+def generate_reset_token(email: str) -> str:
+    payload = {
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
+        "iat": datetime.now(timezone.utc),
+        "purpose": "password_reset"
+    }
+    return jwt.encode(payload, Config.JWT_SECRET, algorithm="HS256")
+
+
+def verify_reset_token(token: str) -> str | None:
+    try:
+        payload = jwt.decode(token, Config.JWT_SECRET, algorithms=["HS256"])
+        if payload.get("purpose") != "password_reset":
+            return None
+        return payload.get("email")
+    except:
+        return None
+
+
+def send_reset_email(to_email: str, reset_url: str):
+    if not Config.SMTP_SERVER or not Config.SMTP_USERNAME or not Config.SMTP_PASSWORD:
+        print(f"\n--- MOCK EMAIL ---")
+        print(f"To: {to_email}")
+        print(f"Subject: Password Reset Request")
+        print(f"Reset Link: {reset_url}")
+        print(f"------------------\n")
+        return
+        
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = Config.SMTP_FROM_EMAIL
+        msg["To"] = to_email
+        msg["Subject"] = "Password Reset Request"
+        
+        body = f"Click the following link to reset your password:\n\n{reset_url}\n\nThis link will expire in 15 minutes."
+        msg.attach(MIMEText(body, "plain"))
+        
+        server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT)
+        server.starttls()
+        server.login(Config.SMTP_USERNAME, Config.SMTP_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+    except Exception as e:
+        print(f"Failed to send email to {to_email}: {e}")
 
 
 def token_required(f):

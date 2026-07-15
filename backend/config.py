@@ -43,3 +43,11 @@ class Config:
 
     # CORS
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000,https://stock-prediction-system-seven.vercel.app").split(",")
+
+    # SMTP Settings
+    SMTP_SERVER = os.environ.get("SMTP_SERVER", "")
+    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+    SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "")
+    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+    SMTP_FROM_EMAIL = os.environ.get("SMTP_FROM_EMAIL", "noreply@stocksense.com")
+    FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")

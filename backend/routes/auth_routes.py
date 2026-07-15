@@ -74,25 +74,48 @@ def logout():
     return jsonify({"message": "Logged out successfully"}), 200
 
 
+@auth_bp.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    user = get_user_by_email(email)
+    if user:
+        from utils.auth_utils import generate_reset_token, send_reset_email
+        from config import Config
+        token = generate_reset_token(email)
+        reset_url = f"{Config.FRONTEND_URL}/reset-password?token={token}"
+        send_reset_email(email, reset_url)
+
+    # Always return success to prevent email enumeration
+    return jsonify({"message": "If an account exists, a reset email has been sent."}), 200
+
+
 @auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
     data = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
+    token = data.get("token")
     new_password = data.get("new_password") or ""
 
-    if not email or not new_password:
-        return jsonify({"error": "Email and new password are required"}), 400
-
-    if not EMAIL_RE.match(email):
-        return jsonify({"error": "Invalid email format"}), 400
+    if not token or not new_password:
+        return jsonify({"error": "Token and new password are required"}), 400
 
     if len(new_password) < 6:
         return jsonify({"error": "Password must be at least 6 characters"}), 400
 
+    from utils.auth_utils import verify_reset_token
+    email = verify_reset_token(token)
+    if not email:
+        return jsonify({"error": "Invalid or expired reset token"}), 400
+
     user = get_user_by_email(email)
     if not user:
-        return jsonify({"error": "No account found with this email"}), 404
+        return jsonify({"error": "User no longer exists"}), 404
 
     update_user_password(email, hash_password(new_password))
 
     return jsonify({"message": "Password reset successfully"}), 200
+
