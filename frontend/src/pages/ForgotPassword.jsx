@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authAPI } from "../api/api";
-import { useAuth } from "../context/AuthContext";
 
-export default function Login() {
-  const [form, setForm] = useState({ email: "", password: "" });
+export default function ForgotPassword() {
+  const [form, setForm] = useState({ email: "", new_password: "" });
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -15,13 +14,16 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setMessage("");
     setLoading(true);
     try {
-      const res = await authAPI.login(form);
-      login(res.data.token, res.data.user);
-      navigate("/dashboard");
+      const res = await authAPI.resetPassword(form);
+      setMessage(res.data.message);
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
     } catch (err) {
-      setError(err.response?.data?.error || "Login failed. Please try again.");
+      setError(err.response?.data?.error || "Password reset failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -30,20 +32,18 @@ export default function Login() {
   return (
     <div className="page auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h2>Welcome Back</h2>
+        <h2>Reset Password</h2>
         {error && <div className="alert-error">{error}</div>}
+        {message && <div className="alert-success" style={{ color: "#00e676", marginBottom: "1rem", textAlign: "center" }}>{message}</div>}
         <label>Email</label>
         <input type="email" name="email" value={form.email} onChange={handleChange} required />
-        <label>Password</label>
-        <input type="password" name="password" value={form.password} onChange={handleChange} required />
+        <label>New Password</label>
+        <input type="password" name="new_password" value={form.new_password} onChange={handleChange} required minLength={6} />
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
+          {loading ? "Resetting..." : "Reset Password"}
         </button>
         <p className="auth-switch">
-          <Link to="/forgot-password" style={{fontSize: "0.9rem", color: "#b3b3b3"}}>Forgot Password?</Link>
-        </p>
-        <p className="auth-switch">
-          Don't have an account? <Link to="/register">Sign up</Link>
+          Remember your password? <Link to="/login">Log in</Link>
         </p>
       </form>
     </div>

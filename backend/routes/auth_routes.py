@@ -10,7 +10,7 @@ import re
 
 from flask import Blueprint, request, jsonify
 
-from models.user_model import create_user, get_user_by_email
+from models.user_model import create_user, get_user_by_email, update_user_password
 from utils.auth_utils import hash_password, verify_password, generate_token, token_required
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -72,3 +72,27 @@ def logout():
     # JWTs are stateless: "logging out" just means the client discards the
     # token. This endpoint exists for API completeness / future blocklisting.
     return jsonify({"message": "Logged out successfully"}), 200
+
+
+@auth_bp.route("/reset-password", methods=["POST"])
+def reset_password():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    new_password = data.get("new_password") or ""
+
+    if not email or not new_password:
+        return jsonify({"error": "Email and new password are required"}), 400
+
+    if not EMAIL_RE.match(email):
+        return jsonify({"error": "Invalid email format"}), 400
+
+    if len(new_password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+
+    user = get_user_by_email(email)
+    if not user:
+        return jsonify({"error": "No account found with this email"}), 404
+
+    update_user_password(email, hash_password(new_password))
+
+    return jsonify({"message": "Password reset successfully"}), 200

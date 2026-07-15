@@ -26,3 +26,11 @@ def get_user_by_id(user_id: int):
     with db_cursor() as cur:
         cur.execute("SELECT id, full_name, email, created_at FROM users WHERE id = %s", (user_id,))
         return cur.fetchone()
+
+
+def update_user_password(email: str, password_hash: str):
+    with db_cursor(commit=True) as cur:
+        cur.execute(
+            "UPDATE users SET password_hash = %s WHERE email = %s",
+            (password_hash, email),
+        )

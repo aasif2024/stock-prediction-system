@@ -37,6 +37,7 @@ export const authAPI = {
   register: (payload) => api.post("/api/auth/register", payload),
   login: (payload) => api.post("/api/auth/login", payload),
   logout: () => api.post("/api/auth/logout"),
+  resetPassword: (payload) => api.post("/api/auth/reset-password", payload),
 };
 
 export const companyAPI = {
