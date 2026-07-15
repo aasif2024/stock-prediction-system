@@ -88,35 +88,6 @@ export default function VerifyOtp() {
           </p>
         </div>
 
-        {/* Demo OTP display — only visible when no SMTP is configured */}
-        {demo_otp && (
-          <div
-            style={{
-              background: "rgba(0, 230, 118, 0.1)",
-              border: "1px solid #00e676",
-              borderRadius: "10px",
-              padding: "1rem",
-              textAlign: "center",
-              marginBottom: "1rem",
-            }}
-          >
-            <p style={{ color: "#b3b3b3", fontSize: "0.8rem", margin: "0 0 0.3rem 0" }}>
-              🔧 Demo Mode — No email server configured. Your OTP is:
-            </p>
-            <p
-              style={{
-                color: "#00e676",
-                fontSize: "2rem",
-                fontWeight: "bold",
-                letterSpacing: "0.5rem",
-                margin: 0,
-              }}
-            >
-              {demo_otp}
-            </p>
-          </div>
-        )}
-
         {error && <div className="alert-error">{error}</div>}
         {resendMsg && <p style={{ color: "#00e676", textAlign: "center", fontSize: "0.9rem" }}>{resendMsg}</p>}
 

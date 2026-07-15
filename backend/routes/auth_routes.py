@@ -101,18 +101,24 @@ def forgot_password():
     smtp_configured = bool(Config.SMTP_SERVER and Config.SMTP_USERNAME and Config.SMTP_PASSWORD)
 
     if smtp_configured:
-        send_reset_email(email, otp)
-        return jsonify({
-            "message": f"OTP sent to your email ({email}). It expires in 10 minutes.",
-            "demo_otp": None  # Never expose OTP in production
-        }), 200
+        try:
+            send_reset_email(email, otp)
+            return jsonify({
+                "message": f"OTP sent to {email}. Please check your inbox (and spam folder). It expires in 10 minutes."
+            }), 200
+        except Exception as e:
+            # OTP is saved in DB — tell user email failed but they can retry
+            return jsonify({
+                "error": f"OTP generated but email could not be sent. Check your SMTP credentials. Server error: {str(e)}"
+            }), 500
     else:
-        # No SMTP configured: print to console AND return OTP in response for demo
-        print(f"\n--- MOCK EMAIL ---\nTo: {email}\nSubject: Password Reset OTP\nYour OTP is: {otp}\n------------------\n")
+        # No SMTP configured — log to server console only
+        print(f"\n--- SERVER LOG (configure SMTP to send real emails) ---")
+        print(f"OTP for {email}: {otp}")
+        print(f"-------------------------------------------------------\n")
         return jsonify({
-            "message": "OTP generated successfully. Check below (demo mode - no email server configured).",
-            "demo_otp": otp  # Show OTP on screen in demo/dev mode
-        }), 200
+            "error": "Email service is not configured. Please contact the administrator to set up SMTP."
+        }), 503
 
 
 
