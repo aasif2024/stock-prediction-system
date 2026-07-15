@@ -1,49 +1,56 @@
-import sys
-import os
-import time
+import sys, io, contextlib
 sys.path.insert(0, '.')
 from app import app
-from models.user_model import get_user_by_email
-
-import io
-import contextlib
 
 client = app.test_client()
 
-print("Testing OTP Reset Flow...")
+print("=== Testing OTP Flow (demo_otp in response) ===\n")
 
 # 1. Register user
-client.post('/api/auth/register', json={"full_name": "OTP User", "email": "otp@example.com", "password": "oldpassword"})
+client.post('/api/auth/register', json={
+    "full_name": "OTP Test User",
+    "email": "otptest2@example.com",
+    "password": "oldpassword"
+})
 
-# 2. Forgot Password (should print mock email with OTP)
-f = io.StringIO()
-with contextlib.redirect_stdout(f):
-    res_forgot = client.post('/api/auth/forgot-password', json={"email": "otp@example.com"})
+# 2. Forgot Password
+res = client.post('/api/auth/forgot-password', json={"email": "otptest2@example.com"})
+data = res.get_json()
+print("Step 1 - Forgot Password Response:", data)
+otp = data.get("demo_otp")
+print(f"OTP from response: {otp}\n")
 
-stdout_output = f.getvalue()
-print("Forgot Password Response:", res_forgot.get_json())
-print("Console Output (Mock Email):\n", stdout_output)
+if not otp:
+    print("FAIL: demo_otp not returned!")
+    sys.exit(1)
 
-# 3. Extract OTP
-otp = None
-for line in stdout_output.split('\n'):
-    if "Your OTP is:" in line:
-        otp = line.split("Your OTP is: ")[1].strip()
-        break
+# 3. Wrong OTP → should fail
+res2 = client.post('/api/auth/reset-password', json={
+    "email": "otptest2@example.com",
+    "otp": "000000",
+    "new_password": "newpassword123"
+})
+print("Step 2 - Wrong OTP:", res2.get_json())
 
-if otp:
-    print(f"Extracted OTP: {otp}")
-    
-    # Test Invalid OTP
-    res_invalid = client.post('/api/auth/reset-password', json={"email": "otp@example.com", "otp": "000000", "new_password": "securenewpassword"})
-    print("Invalid OTP Response:", res_invalid.get_json())
+# 4. Correct OTP → should succeed
+res3 = client.post('/api/auth/reset-password', json={
+    "email": "otptest2@example.com",
+    "otp": otp,
+    "new_password": "newpassword123"
+})
+print("Step 3 - Correct OTP:", res3.get_json())
 
-    # 4. Reset Password with correct OTP
-    res_reset = client.post('/api/auth/reset-password', json={"email": "otp@example.com", "otp": otp, "new_password": "securenewpassword"})
-    print("Correct OTP Response:", res_reset.get_json())
-    
-    # 5. Login with new password
-    res_login = client.post('/api/auth/login', json={"email": "otp@example.com", "password": "securenewpassword"})
-    print("Login with new password:", "success" if res_login.status_code == 200 else "failed")
-else:
-    print("Failed to extract OTP from mock email!")
+# 5. Login with new password
+res4 = client.post('/api/auth/login', json={
+    "email": "otptest2@example.com",
+    "password": "newpassword123"
+})
+print("Step 4 - Login with new password:", "SUCCESS" if res4.status_code == 200 else f"FAILED ({res4.status_code})")
+
+# 6. OTP reuse → should fail (cleared after use)
+res5 = client.post('/api/auth/reset-password', json={
+    "email": "otptest2@example.com",
+    "otp": otp,
+    "new_password": "anotherpassword"
+})
+print("Step 5 - Reuse used OTP:", res5.get_json())

@@ -83,19 +83,37 @@ def forgot_password():
         return jsonify({"error": "Email is required"}), 400
 
     user = get_user_by_email(email)
-    if user:
-        from utils.auth_utils import generate_otp, send_reset_email
-        from models.user_model import save_password_reset_otp
-        from datetime import datetime, timedelta
-        
-        otp = generate_otp()
-        expires_at = datetime.utcnow() + timedelta(minutes=10)
-        
-        save_password_reset_otp(email, otp, expires_at)
-        send_reset_email(email, otp)
+    if not user:
+        # Return generic message to prevent email enumeration
+        return jsonify({"message": "If an account exists, a reset OTP has been sent."}), 200
 
-    # Always return success to prevent email enumeration
-    return jsonify({"message": "If an account exists, a reset OTP has been sent."}), 200
+    from utils.auth_utils import generate_otp, send_reset_email
+    from models.user_model import save_password_reset_otp
+    from datetime import datetime, timedelta
+    from config import Config
+
+    otp = generate_otp()
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
+
+    save_password_reset_otp(email, otp, expires_at)
+
+    # Check if SMTP is configured
+    smtp_configured = bool(Config.SMTP_SERVER and Config.SMTP_USERNAME and Config.SMTP_PASSWORD)
+
+    if smtp_configured:
+        send_reset_email(email, otp)
+        return jsonify({
+            "message": f"OTP sent to your email ({email}). It expires in 10 minutes.",
+            "demo_otp": None  # Never expose OTP in production
+        }), 200
+    else:
+        # No SMTP configured: print to console AND return OTP in response for demo
+        print(f"\n--- MOCK EMAIL ---\nTo: {email}\nSubject: Password Reset OTP\nYour OTP is: {otp}\n------------------\n")
+        return jsonify({
+            "message": "OTP generated successfully. Check below (demo mode - no email server configured).",
+            "demo_otp": otp  # Show OTP on screen in demo/dev mode
+        }), 200
+
 
 
 @auth_bp.route("/reset-password", methods=["POST"])
