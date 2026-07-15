@@ -42,6 +42,12 @@ def decode_token(token: str) -> dict:
     return jwt.decode(token, Config.JWT_SECRET, algorithms=["HS256"])
 
 
+import random
+
+def generate_otp() -> str:
+    return str(random.randint(100000, 999999))
+
+
 def generate_reset_token(email: str) -> str:
     payload = {
         "email": email,
@@ -62,12 +68,12 @@ def verify_reset_token(token: str) -> str | None:
         return None
 
 
-def send_reset_email(to_email: str, reset_url: str):
+def send_reset_email(to_email: str, otp: str):
     if not Config.SMTP_SERVER or not Config.SMTP_USERNAME or not Config.SMTP_PASSWORD:
         print(f"\n--- MOCK EMAIL ---")
         print(f"To: {to_email}")
-        print(f"Subject: Password Reset Request")
-        print(f"Reset Link: {reset_url}")
+        print(f"Subject: Password Reset OTP")
+        print(f"Your OTP is: {otp}")
         print(f"------------------\n")
         return
         
@@ -75,9 +81,9 @@ def send_reset_email(to_email: str, reset_url: str):
         msg = MIMEMultipart()
         msg["From"] = Config.SMTP_FROM_EMAIL
         msg["To"] = to_email
-        msg["Subject"] = "Password Reset Request"
+        msg["Subject"] = "Password Reset OTP"
         
-        body = f"Click the following link to reset your password:\n\n{reset_url}\n\nThis link will expire in 15 minutes."
+        body = f"Your password reset OTP is:\n\n{otp}\n\nThis code will expire in 10 minutes."
         msg.attach(MIMEText(body, "plain"))
         
         server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT)

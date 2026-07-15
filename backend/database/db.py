@@ -99,6 +99,8 @@ def init_sqlite_db(db_path):
         full_name       TEXT NOT NULL,
         email           TEXT NOT NULL UNIQUE,
         password_hash   TEXT NOT NULL,
+        reset_otp       TEXT DEFAULT NULL,
+        reset_otp_exp   DATETIME DEFAULT NULL,
         created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 

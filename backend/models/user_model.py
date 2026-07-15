@@ -28,9 +28,23 @@ def get_user_by_id(user_id: int):
         return cur.fetchone()
 
 
+def save_password_reset_otp(email: str, otp: str, expires_at):
+    with db_cursor(commit=True) as cur:
+        cur.execute(
+            "UPDATE users SET reset_otp = %s, reset_otp_exp = %s WHERE email = %s",
+            (otp, expires_at, email),
+        )
+
+
+def get_user_by_email_with_otp(email: str):
+    with db_cursor() as cur:
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        return cur.fetchone()
+
+
 def update_user_password(email: str, password_hash: str):
     with db_cursor(commit=True) as cur:
         cur.execute(
-            "UPDATE users SET password_hash = %s WHERE email = %s",
+            "UPDATE users SET password_hash = %s, reset_otp = NULL, reset_otp_exp = NULL WHERE email = %s",
             (password_hash, email),
         )

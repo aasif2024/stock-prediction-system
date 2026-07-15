@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS users (
     full_name       VARCHAR(120)  NOT NULL,
     email           VARCHAR(150)  NOT NULL UNIQUE,
     password_hash   VARCHAR(255)  NOT NULL,
+    reset_otp       VARCHAR(6)    DEFAULT NULL,
+    reset_otp_exp   DATETIME      DEFAULT NULL,
     created_at      DATETIME      DEFAULT CURRENT_TIMESTAMP
 );
 

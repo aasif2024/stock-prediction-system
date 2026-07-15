@@ -84,36 +84,63 @@ def forgot_password():
 
     user = get_user_by_email(email)
     if user:
-        from utils.auth_utils import generate_reset_token, send_reset_email
-        from config import Config
-        token = generate_reset_token(email)
-        reset_url = f"{Config.FRONTEND_URL}/reset-password?token={token}"
-        send_reset_email(email, reset_url)
+        from utils.auth_utils import generate_otp, send_reset_email
+        from models.user_model import save_password_reset_otp
+        from datetime import datetime, timedelta
+        
+        otp = generate_otp()
+        expires_at = datetime.utcnow() + timedelta(minutes=10)
+        
+        save_password_reset_otp(email, otp, expires_at)
+        send_reset_email(email, otp)
 
     # Always return success to prevent email enumeration
-    return jsonify({"message": "If an account exists, a reset email has been sent."}), 200
+    return jsonify({"message": "If an account exists, a reset OTP has been sent."}), 200
 
 
 @auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
     data = request.get_json(silent=True) or {}
-    token = data.get("token")
+    email = (data.get("email") or "").strip().lower()
+    otp = data.get("otp") or ""
     new_password = data.get("new_password") or ""
 
-    if not token or not new_password:
-        return jsonify({"error": "Token and new password are required"}), 400
+    if not email or not otp or not new_password:
+        return jsonify({"error": "Email, OTP and new password are required"}), 400
 
     if len(new_password) < 6:
         return jsonify({"error": "Password must be at least 6 characters"}), 400
 
-    from utils.auth_utils import verify_reset_token
-    email = verify_reset_token(token)
-    if not email:
-        return jsonify({"error": "Invalid or expired reset token"}), 400
-
-    user = get_user_by_email(email)
+    from models.user_model import get_user_by_email_with_otp, update_user_password
+    user = get_user_by_email_with_otp(email)
     if not user:
-        return jsonify({"error": "User no longer exists"}), 404
+        return jsonify({"error": "No account found with this email"}), 404
+        
+    db_otp = user.get("reset_otp")
+    db_exp_str = user.get("reset_otp_exp")
+    
+    if not db_otp or db_otp != otp:
+        return jsonify({"error": "Invalid OTP"}), 400
+        
+    if not db_exp_str:
+        return jsonify({"error": "OTP expired"}), 400
+        
+    from datetime import datetime
+    try:
+        if isinstance(db_exp_str, str):
+            db_exp = datetime.strptime(db_exp_str, "%Y-%m-%d %H:%M:%S.%f")
+        else:
+            db_exp = db_exp_str
+            
+        if datetime.utcnow() > db_exp:
+            return jsonify({"error": "OTP has expired"}), 400
+    except ValueError:
+        try:
+            db_exp = datetime.strptime(db_exp_str, "%Y-%m-%d %H:%M:%S")
+            if datetime.utcnow() > db_exp:
+                return jsonify({"error": "OTP has expired"}), 400
+        except Exception:
+            pass
 
     update_user_password(email, hash_password(new_password))
 
