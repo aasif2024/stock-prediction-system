@@ -27,6 +27,30 @@ _model = None
 _scaler = None
 _company_encoder = None
 _metadata = None
+_local_dataset = None
+
+
+def _get_local_dataset() -> pd.DataFrame:
+    global _local_dataset
+    if _local_dataset is not None:
+        return _local_dataset
+
+    dataset_path = Path(__file__).resolve().parent.parent.parent / "machine_learning" / "data" / "sample_dataset.xlsx"
+    if not dataset_path.exists():
+        print(f"Warning: Local dataset not found at {dataset_path}")
+        return pd.DataFrame()
+
+    try:
+        sheets = pd.read_excel(dataset_path, sheet_name=None)
+        frames = [sheet_df for sheet_df in sheets.values()]
+        df = pd.concat(frames, ignore_index=True)
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.sort_values(["equityName", "date"]).reset_index(drop=True)
+        _local_dataset = df
+        return _local_dataset
+    except Exception as e:
+        print(f"Error loading local dataset: {e}")
+        return pd.DataFrame()
 
 
 def _load_artifacts():
@@ -206,7 +230,7 @@ def get_historical_data(equity_name: str, days: int = 30) -> list:
         df = ticker.history(period=period)
         
         if df.empty:
-            return []
+            raise ValueError(f"No live data found for {ticker_symbol}")
             
         df = df.tail(days)
         
@@ -222,8 +246,32 @@ def get_historical_data(equity_name: str, days: int = 30) -> list:
             })
         return results
     except Exception as e:
-        print(f"Error reading live historical data for {ticker_symbol}: {e}")
-        return []
+        print(f"Error reading live historical data for {ticker_symbol}, falling back to local dataset: {e}")
+        local_df = _get_local_dataset()
+        if local_df.empty:
+            return []
+            
+        equity_df = local_df[local_df["equityName"] == equity_name]
+        if equity_df.empty:
+            return []
+            
+        # Get the last `days` rows, excluding the very last row which we treat as "today's live data"
+        if len(equity_df) > 1:
+            equity_df = equity_df.iloc[:-1].tail(days)
+        else:
+            equity_df = equity_df.tail(days)
+            
+        results = []
+        for _, row in equity_df.iterrows():
+            results.append({
+                "date": row["date"].strftime("%Y-%m-%d"),
+                "open": round(float(row["open"]), 2),
+                "high": round(float(row["high"]), 2),
+                "low": round(float(row["low"]), 2),
+                "close": round(float(row["close"]), 2),
+                "tradedQty": float(row["tradedQty"])
+            })
+        return results
 
 def get_latest_live_data(equity_name: str) -> dict:
     """
@@ -234,7 +282,7 @@ def get_latest_live_data(equity_name: str) -> dict:
         ticker = yf.Ticker(ticker_symbol)
         df = ticker.history(period="5d") # Fetch last 5 days to guarantee at least 1 valid day
         if df.empty:
-            return {}
+            raise ValueError(f"No live data found for {ticker_symbol}")
         
         latest = df.iloc[-1]
         date = df.index[-1]
@@ -259,8 +307,36 @@ def get_latest_live_data(equity_name: str) -> dict:
             "change_pct": round(float(change_pct), 2)
         }
     except Exception as e:
-        print(f"Error reading latest live data for {ticker_symbol}: {e}")
-        return {}
+        print(f"Error reading latest live data for {ticker_symbol}, falling back to local dataset: {e}")
+        local_df = _get_local_dataset()
+        if local_df.empty:
+            return {}
+            
+        equity_df = local_df[local_df["equityName"] == equity_name]
+        if equity_df.empty:
+            return {}
+            
+        latest = equity_df.iloc[-1]
+        date = latest["date"]
+        
+        change_pct = 0.0
+        change_val = 0.0
+        if len(equity_df) > 1:
+            prev = equity_df.iloc[-2]
+            change_val = latest["close"] - prev["close"]
+            change_pct = (change_val / prev["close"]) * 100 if prev["close"] else 0.0
+            
+        return {
+            "equity_name": equity_name,
+            "date": date.strftime("%Y-%m-%d"),
+            "open": round(float(latest["open"]), 2),
+            "high": round(float(latest["high"]), 2),
+            "low": round(float(latest["low"]), 2),
+            "close": round(float(latest["close"]), 2),
+            "traded_qty": int(latest["tradedQty"]),
+            "change_val": round(float(change_val), 2),
+            "change_pct": round(float(change_pct), 2)
+        }
 
 def get_all_latest_live_data(equity_names: list) -> list:
     from concurrent.futures import ThreadPoolExecutor, as_completed
