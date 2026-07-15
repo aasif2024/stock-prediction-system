@@ -40,9 +40,6 @@ export default function Login() {
           {loading ? "Logging in..." : "Login"}
         </button>
         <p className="auth-switch">
-          <Link to="/forgot-password" style={{fontSize: "0.9rem", color: "#b3b3b3"}}>Forgot Password?</Link>
-        </p>
-        <p className="auth-switch">
           Don't have an account? <Link to="/register">Sign up</Link>
         </p>
       </form>

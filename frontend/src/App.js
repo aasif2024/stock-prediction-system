@@ -8,9 +8,6 @@ import PrivateRoute from "./components/PrivateRoute";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import ForgotPassword from "./pages/ForgotPassword";
-import VerifyOtp from "./pages/VerifyOtp";
-import ResetPassword from "./pages/ResetPassword";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Predict from "./pages/Predict";
@@ -26,9 +23,6 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/verify-otp" element={<VerifyOtp />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/register" element={<Register />} />
             <Route path="/about" element={<About />} />
             <Route
