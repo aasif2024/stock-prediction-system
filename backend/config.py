@@ -33,7 +33,10 @@ class Config:
 
     # Database selection ('mysql' or 'sqlite')
     DATABASE_TYPE = os.environ.get("DATABASE_TYPE", "sqlite")
-    SQLITE_PATH = BASE_DIR.parent / "database" / "stock_prediction.db"
+    # On Render, BASE_DIR.parent may not be writable.
+    # SQLITE_PATH defaults to a 'database/' folder inside the backend dir itself.
+    _sqlite_env = os.environ.get("SQLITE_PATH", "")
+    SQLITE_PATH = Path(_sqlite_env) if _sqlite_env else BASE_DIR / "database" / "stock_prediction.db"
 
     # ML artifacts
     ML_MODEL_DIR = BASE_DIR / "ml_model"

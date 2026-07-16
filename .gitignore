@@ -11,9 +11,9 @@ backend/.env
 frontend/node_modules/
 frontend/build/
 
-# ML artifacts (regenerate with train_model.py; keep out of git if large)
+# ML artifacts (only ignore large training-time artifacts; backend pkl files are needed for deployment)
 machine_learning/saved_model/*.pkl
-backend/ml_model/*.pkl
+# backend/ml_model/*.pkl  <-- intentionally NOT ignored so Render can serve predictions
 
 # OS
 .DS_Store

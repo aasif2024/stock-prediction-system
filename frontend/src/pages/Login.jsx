@@ -21,7 +21,11 @@ export default function Login() {
       login(res.data.token, res.data.user);
       navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.error || "Login failed. Please try again.");
+      if (err.code === "ERR_NETWORK") {
+        setError("Network error: Cannot connect to backend. Is the server running?");
+      } else {
+        setError(err.response?.data?.error || "Login failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
