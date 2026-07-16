@@ -6,6 +6,11 @@ venv/
 
 # Environment secrets
 backend/.env
+frontend/.env.development
+
+# SQLite database (runtime data — do not commit)
+database/stock_prediction.db
+backend/database/stock_prediction.db
 
 # Node / React
 frontend/node_modules/

@@ -190,13 +190,21 @@ def db_cursor(commit: bool = False):
     is closed. Set commit=True for INSERT/UPDATE/DELETE statements.
     """
     conn = get_connection()
+    cur = conn.cursor()
     try:
-        with conn.cursor() as cur:
-            yield cur
+        yield cur
         if commit:
             conn.commit()
     except Exception:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise
     finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
         conn.close()
+
