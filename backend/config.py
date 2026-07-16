@@ -29,6 +29,7 @@ class Config:
     MYSQL_USER = os.environ.get("MYSQL_USER", "root")
     MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "")
     MYSQL_DB = os.environ.get("MYSQL_DB", "stock_prediction_db")
+    MYSQL_SSL = os.environ.get("MYSQL_SSL", "false").lower() == "true"
 
     # Database selection ('mysql' or 'sqlite')
     DATABASE_TYPE = os.environ.get("DATABASE_TYPE", "sqlite")

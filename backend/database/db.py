@@ -156,15 +156,19 @@ def get_connection():
     """Opens a connection to the database. Defaults to SQLite or falls back to it if MySQL fails."""
     if Config.DATABASE_TYPE == "mysql":
         try:
-            return pymysql.connect(
-                host=Config.MYSQL_HOST,
-                port=Config.MYSQL_PORT,
-                user=Config.MYSQL_USER,
-                password=Config.MYSQL_PASSWORD,
-                database=Config.MYSQL_DB,
-                cursorclass=pymysql.cursors.DictCursor,
-                autocommit=False,
-            )
+            connection_args = {
+                "host": Config.MYSQL_HOST,
+                "port": Config.MYSQL_PORT,
+                "user": Config.MYSQL_USER,
+                "password": Config.MYSQL_PASSWORD,
+                "database": Config.MYSQL_DB,
+                "cursorclass": pymysql.cursors.DictCursor,
+                "autocommit": False,
+            }
+            if Config.MYSQL_SSL:
+                connection_args["ssl"] = {"ssl_mode": "REQUIRED"} # required by aiven
+            
+            return pymysql.connect(**connection_args)
         except Exception as e:
             print(f"Warning: Failed to connect to MySQL database: {e}. Falling back to SQLite...")
             Config.DATABASE_TYPE = "sqlite"
