@@ -1,36 +1,42 @@
 #!/usr/bin/env bash
 # startup.sh – runs on Render before gunicorn starts.
-# Initialises the SQLite database and seeds the companies table.
+# Handles both PostgreSQL (Supabase) and SQLite setups.
 set -e
 
 echo "==> [startup] Starting deployment setup..."
 
-# Create database directory inside backend (writable on Render)
-mkdir -p database
-
-# Initialise the SQLite DB schema (idempotent — uses CREATE TABLE IF NOT EXISTS)
 python - <<'PYEOF'
 import sys
 sys.path.insert(0, ".")
 
 from config import Config
-from database.db import init_sqlite_db
 
-db_path = Config.SQLITE_PATH
-db_path.parent.mkdir(parents=True, exist_ok=True)
+print(f"[startup] DATABASE_TYPE = {Config.DATABASE_TYPE}")
 
-if not db_path.exists():
-    print(f"[startup] Creating new SQLite DB at {db_path}")
-    init_sqlite_db(db_path)
+if Config.DATABASE_TYPE == "postgres":
+    print("[startup] Using PostgreSQL (Supabase). Initialising schema...")
+    import psycopg2
+    from database.db import PostgresConnectionWrapper, init_postgres_db
+
+    conn_raw = psycopg2.connect(Config.DATABASE_URL, sslmode="require")
+    conn_raw.autocommit = False
+    conn = PostgresConnectionWrapper(conn_raw)
+    init_postgres_db(conn)
+    conn.close()
+    print("[startup] PostgreSQL schema ready.")
+
 else:
-    print(f"[startup] SQLite DB already exists at {db_path}")
-    # Re-run schema to ensure any new tables are created
+    print(f"[startup] Using SQLite at {Config.SQLITE_PATH}")
+    from pathlib import Path
+    from database.db import init_sqlite_db
+    db_path = Config.SQLITE_PATH
+    db_path.parent.mkdir(parents=True, exist_ok=True)
     init_sqlite_db(db_path)
+    print("[startup] SQLite schema ready.")
 
-print("[startup] Database schema is ready.")
 PYEOF
 
-# Seed companies from ml_model/metadata.json (idempotent — uses ON CONFLICT DO NOTHING)
+# Seed companies table (idempotent - uses ON CONFLICT DO NOTHING)
 echo "==> [startup] Seeding companies..."
 python - <<'PYEOF'
 import sys, json
@@ -41,16 +47,13 @@ from models.company_model import upsert_company
 
 metadata_path = Config.METADATA_PATH
 if not metadata_path.exists():
-    print(f"[startup] WARNING: metadata.json not found at {metadata_path}. Skipping company seed.")
+    print(f"[startup] WARNING: metadata.json not found at {metadata_path}. Skipping.")
     sys.exit(0)
 
 with open(metadata_path) as f:
     metadata = json.load(f)
 
 companies = metadata.get("companies", [])
-if not companies:
-    print("[startup] No companies found in metadata.json. Skipping.")
-    sys.exit(0)
 
 sector_mapping = {
     "AMBUJACEM": "cement & materials",
@@ -67,8 +70,8 @@ for equity in companies:
     cid = upsert_company(equity, equity, sector)
     print(f"[startup]   seeded: {equity} (id={cid})")
 
-print(f"[startup] Seeded {len(companies)} companies.")
+print(f"[startup] Done. {len(companies)} companies seeded.")
 PYEOF
 
-echo "==> [startup] Setup complete! Starting gunicorn..."
+echo "==> [startup] All setup complete. Starting gunicorn..."
 exec gunicorn --workers 1 --timeout 120 --bind 0.0.0.0:${PORT:-5000} app:app

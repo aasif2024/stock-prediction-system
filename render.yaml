@@ -7,17 +7,13 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: bash startup.sh
-    disk:
-      name: sqlite-data
-      mountPath: /opt/render/project/src/database
-      sizeGB: 1
     envVars:
       - key: FLASK_DEBUG
         value: "0"
       - key: DATABASE_TYPE
-        value: sqlite
-      - key: SQLITE_PATH
-        value: /opt/render/project/src/database/stock_prediction.db
+        value: postgres
+      - key: DATABASE_URL
+        sync: false        # Set this manually in Render dashboard from Supabase
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET

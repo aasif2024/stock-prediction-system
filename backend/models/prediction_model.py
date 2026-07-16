@@ -4,14 +4,25 @@ models/prediction_model.py
 Data-access functions for the `prediction_history` table.
 """
 
-from database.db import db_cursor
+from database.db import db_cursor, get_db_type
+
+
+def _insert_returning_id(cur, sql: str, params: tuple) -> int:
+    if get_db_type() == "postgres":
+        cur.execute(sql + " RETURNING id", params)
+        row = cur.fetchone()
+        return row["id"]
+    else:
+        cur.execute(sql, params)
+        return cur.lastrowid
 
 
 def save_prediction(user_id: int, company_id: int, input_open: float, input_high: float,
                      input_low: float, input_close: float, input_traded_qty: int,
                      predicted_price: float, direction: str) -> int:
     with db_cursor(commit=True) as cur:
-        cur.execute(
+        return _insert_returning_id(
+            cur,
             """
             INSERT INTO prediction_history
                 (user_id, company_id, input_open, input_high, input_low,
@@ -21,7 +32,6 @@ def save_prediction(user_id: int, company_id: int, input_open: float, input_high
             (user_id, company_id, input_open, input_high, input_low,
              input_close, input_traded_qty, predicted_price, direction),
         )
-        return cur.lastrowid
 
 
 def get_predictions_for_user(user_id: int):
@@ -40,6 +50,7 @@ def get_predictions_for_user(user_id: int):
         )
         return cur.fetchall()
 
+
 def delete_prediction(user_id: int, prediction_id: int) -> bool:
     with db_cursor(commit=True) as cur:
         cur.execute(
@@ -50,4 +61,3 @@ def delete_prediction(user_id: int, prediction_id: int) -> bool:
             (prediction_id, user_id)
         )
         return cur.rowcount > 0
-

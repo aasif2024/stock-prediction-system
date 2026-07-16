@@ -4,6 +4,11 @@ config.py
 Centralized configuration for the Flask backend. All values can be
 overridden with environment variables so real credentials never need
 to be hard-coded or committed to source control.
+
+Database priority:
+  1. If DATABASE_URL is set  → uses PostgreSQL (Supabase)
+  2. If DATABASE_TYPE=mysql  → uses MySQL
+  3. Otherwise               → uses SQLite (local dev)
 """
 
 import os
@@ -23,7 +28,15 @@ class Config:
     JWT_SECRET = os.environ.get("JWT_SECRET", "change-this-jwt-secret-in-production")
     JWT_EXPIRY_HOURS = int(os.environ.get("JWT_EXPIRY_HOURS", "24"))
 
-    # MySQL
+    # ── Database ──────────────────────────────────────────────────────────────
+    # If DATABASE_URL is provided (Supabase/PostgreSQL), use postgres.
+    DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
+    # Auto-detect: if DATABASE_URL is set, override DATABASE_TYPE to postgres
+    _default_db_type = "postgres" if os.environ.get("DATABASE_URL") else "sqlite"
+    DATABASE_TYPE = os.environ.get("DATABASE_TYPE", _default_db_type)
+
+    # MySQL (legacy / fallback)
     MYSQL_HOST = os.environ.get("MYSQL_HOST", "localhost")
     MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3306"))
     MYSQL_USER = os.environ.get("MYSQL_USER", "root")
@@ -31,10 +44,7 @@ class Config:
     MYSQL_DB = os.environ.get("MYSQL_DB", "stock_prediction_db")
     MYSQL_SSL = os.environ.get("MYSQL_SSL", "false").lower() == "true"
 
-    # Database selection ('mysql' or 'sqlite')
-    DATABASE_TYPE = os.environ.get("DATABASE_TYPE", "sqlite")
-    # On Render, BASE_DIR.parent may not be writable.
-    # SQLITE_PATH defaults to a 'database/' folder inside the backend dir itself.
+    # SQLite (local dev fallback)
     _sqlite_env = os.environ.get("SQLITE_PATH", "")
     SQLITE_PATH = Path(_sqlite_env) if _sqlite_env else BASE_DIR / "database" / "stock_prediction.db"
 
@@ -46,7 +56,10 @@ class Config:
     METADATA_PATH = ML_MODEL_DIR / "metadata.json"
 
     # CORS
-    CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000,https://stock-prediction-system-seven.vercel.app").split(",")
+    CORS_ORIGINS = os.environ.get(
+        "CORS_ORIGINS",
+        "http://localhost:3000,https://stock-prediction-system-seven.vercel.app"
+    ).split(",")
 
     # SMTP Settings
     SMTP_SERVER = os.environ.get("SMTP_SERVER", "")

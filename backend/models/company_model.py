@@ -21,7 +21,24 @@ def get_company_by_equity(equity_name: str):
 
 def upsert_company(company_name: str, equity_name: str, sector: str | None = None) -> int:
     with db_cursor(commit=True) as cur:
-        if get_db_type() == "sqlite":
+        db_type = get_db_type()
+
+        if db_type == "postgres":
+            cur.execute(
+                """
+                INSERT INTO companies (company_name, equity_name, sector)
+                VALUES (%s, %s, %s)
+                ON CONFLICT(equity_name) DO UPDATE
+                    SET company_name = EXCLUDED.company_name,
+                        sector = EXCLUDED.sector
+                RETURNING id
+                """,
+                (company_name, equity_name, sector),
+            )
+            row = cur.fetchone()
+            return row["id"]
+
+        elif db_type == "sqlite":
             cur.execute(
                 """
                 INSERT INTO companies (company_name, equity_name, sector)
@@ -31,6 +48,7 @@ def upsert_company(company_name: str, equity_name: str, sector: str | None = Non
                 (company_name, equity_name, sector),
             )
         else:
+            # MySQL
             cur.execute(
                 """
                 INSERT INTO companies (company_name, equity_name, sector)
@@ -39,5 +57,6 @@ def upsert_company(company_name: str, equity_name: str, sector: str | None = Non
                 """,
                 (company_name, equity_name, sector),
             )
+
         cur.execute("SELECT id FROM companies WHERE equity_name = %s", (equity_name,))
         return cur.fetchone()["id"]

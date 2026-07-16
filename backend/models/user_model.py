@@ -2,18 +2,34 @@
 models/user_model.py
 ---------------------------------
 Data-access functions for the `users` table.
+Uses RETURNING id for INSERT to support PostgreSQL, MySQL, and SQLite.
 """
 
-from database.db import db_cursor
+from database.db import db_cursor, get_db_type
+
+
+def _insert_returning_id(cur, sql: str, params: tuple) -> int:
+    """
+    Executes an INSERT and returns the new row id.
+    For PostgreSQL: uses RETURNING id clause.
+    For MySQL/SQLite: uses cur.lastrowid.
+    """
+    if get_db_type() == "postgres":
+        cur.execute(sql + " RETURNING id", params)
+        row = cur.fetchone()
+        return row["id"]
+    else:
+        cur.execute(sql, params)
+        return cur.lastrowid
 
 
 def create_user(full_name: str, email: str, password_hash: str) -> int:
     with db_cursor(commit=True) as cur:
-        cur.execute(
+        return _insert_returning_id(
+            cur,
             "INSERT INTO users (full_name, email, password_hash) VALUES (%s, %s, %s)",
             (full_name, email, password_hash),
         )
-        return cur.lastrowid
 
 
 def get_user_by_email(email: str):
