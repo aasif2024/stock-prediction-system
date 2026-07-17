@@ -55,6 +55,16 @@ with open(metadata_path) as f:
 
 companies = metadata.get("companies", [])
 
+name_mapping = {
+    "AMBUJACEM": "Ambuja Cements Limited",
+    "BANKINDIA": "Bank of India",
+    "DABUR": "Dabur India Limited",
+    "EVEREADY": "Eveready Industries India Limited",
+    "JSL": "Jindal Stainless Limited",
+    "MARICO": "Marico Limited",
+    "TATAMOTORS": "Tata Motors Limited"
+}
+
 sector_mapping = {
     "AMBUJACEM": "cement & materials",
     "BANKINDIA": "banking & finance",
@@ -67,8 +77,9 @@ sector_mapping = {
 
 for equity in companies:
     sector = sector_mapping.get(equity.upper(), "other")
-    cid = upsert_company(equity, equity, sector)
-    print(f"[startup]   seeded: {equity} (id={cid})")
+    company_name = name_mapping.get(equity.upper(), equity)
+    cid = upsert_company(company_name, equity, sector)
+    print(f"[startup]   seeded: {company_name} (id={cid})")
 
 print(f"[startup] Done. {len(companies)} companies seeded.")
 PYEOF

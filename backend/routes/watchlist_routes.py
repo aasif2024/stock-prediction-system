@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, g
+from urllib.parse import unquote
 from utils.auth_utils import token_required
 from models.watchlist_model import add_to_watchlist, remove_from_watchlist, get_watchlist
 from utils.ml_utils import get_latest_live_data
@@ -50,11 +51,12 @@ def add_item():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@watchlist_bp.route("/<equity_name>", methods=["DELETE"])
+@watchlist_bp.route("/<path:equity_name>", methods=["DELETE"])
 @token_required
 def remove_item(equity_name):
     try:
         user_id = g.user_id
+        equity_name = unquote(equity_name)  # decode URL-encoded names (e.g. spaces)
         result = remove_from_watchlist(user_id, equity_name)
         return jsonify(result), 200
     except Exception as e:

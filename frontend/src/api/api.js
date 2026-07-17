@@ -63,7 +63,7 @@ export const watchlistAPI = {
     shares: shares, 
     buy_price: buyPrice 
   }),
-  remove: (equityName) => api.delete(`/api/watchlist/${equityName}`),
+  remove: (equityName) => api.delete(`/api/watchlist/${encodeURIComponent(equityName)}`),
 };
 
 export default api;

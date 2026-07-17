@@ -62,6 +62,7 @@ export default function Predict() {
   const [loading, setLoading] = useState(false);
   const [chartType, setChartType] = useState("line");
   const [watchlistStatus, setWatchlistStatus] = useState(""); // Track button status
+  const [isInWatchlist, setIsInWatchlist] = useState(false); // track if already in watchlist
 
   // Portfolio Modal State
   const [showPortfolioModal, setShowPortfolioModal] = useState(false);
@@ -98,14 +99,29 @@ export default function Predict() {
     setHistoricalRows([]);
     setError("");
     setWatchlistStatus("");
+    setIsInWatchlist(false);
     setLoading(true);
 
     try {
-      const [historyRes, liveRes] = await Promise.all([
+      // Run all three fetches IN PARALLEL for speed
+      const [historyRes, liveRes, wlRes] = await Promise.all([
         predictAPI.historyChart(selectedEquity),
-        predictAPI.latestLive(selectedEquity)
+        predictAPI.latestLive(selectedEquity),
+        watchlistAPI.list().catch(() => ({ data: { watchlist: [] } })),
       ]);
-      
+
+      // Check watchlist membership
+      const wl = wlRes.data.watchlist || [];
+      const inWL = wl.some((w) => w.equity_name === selectedEquity);
+      setIsInWatchlist(inWL);
+
+      // If already in watchlist, pre-fill shares/buy price for modal
+      const existingWLItem = wl.find((w) => w.equity_name === selectedEquity);
+      if (existingWLItem) {
+        setSharesToBuy(existingWLItem.shares || 0);
+        setBuyPrice(parseFloat(existingWLItem.buy_price) || 0);
+      }
+
       const historyRows = (historyRes.data.historical_data || []).slice(-10);
       setHistoricalRows(historyRows);
 
@@ -121,14 +137,19 @@ export default function Predict() {
 
       const liveData = liveRes.data.live_data;
       if (liveData && liveData.close) {
+        const closeVal = parseFloat(liveData.close);
         setForm({
           equity_name: selectedEquity,
           open: liveData.open.toString(),
           high: liveData.high.toString(),
           low: liveData.low.toString(),
-          close: liveData.close.toString(),
+          close: closeVal.toString(),
           traded_qty: liveData.traded_qty.toString(),
         });
+        // Default buy price to live close only if not already in watchlist
+        if (!existingWLItem) {
+          setBuyPrice(closeVal);
+        }
       } else {
         setError("Could not load latest live market data.");
       }
@@ -379,11 +400,24 @@ export default function Predict() {
                 {form.equity_name && (
                   <button
                     type="button"
-                    className="btn-primary"
+                    className={isInWatchlist ? "btn-secondary" : "btn-primary"}
                     onClick={() => {
-                      setSharesToBuy(0);
-                      setBuyPrice(form.close || 0); // Default buy price to live close
-                      setShowPortfolioModal(true);
+                      if (isInWatchlist) {
+                        // Remove directly with confirmation inline
+                        if (window.confirm(`Remove ${form.equity_name} from your watchlist?`)) {
+                          watchlistAPI.remove(form.equity_name)
+                            .then(() => {
+                              setIsInWatchlist(false);
+                              setWatchlistStatus("Removed!");
+                              setTimeout(() => setWatchlistStatus(""), 3000);
+                            })
+                            .catch(() => setWatchlistStatus("Error"));
+                        }
+                      } else {
+                        setSharesToBuy(0);
+                        setBuyPrice(form.close || 0);
+                        setShowPortfolioModal(true);
+                      }
                     }}
                     style={{
                       width: "100%",
@@ -395,7 +429,10 @@ export default function Predict() {
                       fontSize: "1rem"
                     }}
                   >
-                    ⭐ {watchlistStatus || "Add to Watchlist"}
+                    {isInWatchlist
+                      ? (watchlistStatus || "🗑 Remove from Watchlist")
+                      : (watchlistStatus ? `⭐ ${watchlistStatus}` : "⭐ Add to Watchlist")
+                    }
                   </button>
                 )}
               </div>
@@ -404,49 +441,135 @@ export default function Predict() {
         </div>
 
         {/* Portfolio Simulator Modal */}
-        {showPortfolioModal && (
-          <div style={{
-            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-            background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
-            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
-          }}>
+        {showPortfolioModal && (() => {
+          const liveClose = parseFloat(form.close) || 0;
+          const sharesNum = parseFloat(sharesToBuy) || 0;
+          const buyPriceNum = parseFloat(buyPrice) || 0;
+          const pnlPreview = sharesNum > 0 && buyPriceNum > 0 && liveClose > 0
+            ? ((liveClose - buyPriceNum) * sharesNum)
+            : null;
+          const pnlColor = pnlPreview === null ? "var(--text-muted)" : pnlPreview >= 0 ? "#10b981" : "#ef4444";
+          const investedValue = sharesNum * buyPriceNum;
+          const currentValue = sharesNum * liveClose;
+
+          return (
             <div style={{
-              background: "var(--bg-secondary)", padding: "24px", borderRadius: "12px",
-              width: "400px", border: "1px solid var(--glass-border)",
-              display: "flex", flexDirection: "column", gap: "16px"
+              position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+              background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)",
+              display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
             }}>
-              <h3 style={{ margin: 0, color: "var(--text)" }}>Add to Portfolio: {form.equity_name}</h3>
-              <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-muted)" }}>
-                Simulate an investment. Or leave shares at 0 to just watch the stock.
-              </p>
-              
-              <div>
-                <label style={{ display: "block", marginBottom: "8px" }}>Shares Owned</label>
-                <input type="number" min="0" value={sharesToBuy} onChange={e => setSharesToBuy(e.target.value)} style={{ width: "100%", padding: "8px", background: "var(--bg-primary)", color: "var(--text)", border: "1px solid var(--glass-border)", borderRadius: "4px" }} />
-              </div>
-              
-              <div>
-                <label style={{ display: "block", marginBottom: "8px" }}>Average Buy Price (₹)</label>
-                <input type="number" step="0.01" value={buyPrice} onChange={e => setBuyPrice(e.target.value)} style={{ width: "100%", padding: "8px", background: "var(--bg-primary)", color: "var(--text)", border: "1px solid var(--glass-border)", borderRadius: "4px" }} />
-              </div>
-              
-              <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
-                <button type="button" onClick={() => setShowPortfolioModal(false)} className="btn-secondary" style={{ flex: 1 }}>Cancel</button>
-                <button type="button" onClick={async () => {
-                  try {
-                    await watchlistAPI.add(form.equity_name, sharesToBuy, buyPrice);
-                    setWatchlistStatus("Added!");
-                    setShowPortfolioModal(false);
-                    setTimeout(() => setWatchlistStatus(""), 3000);
-                  } catch (err) {
-                    setWatchlistStatus("Error");
-                    setShowPortfolioModal(false);
-                  }
-                }} className="btn-primary" style={{ flex: 1 }}>Save</button>
+              <div style={{
+                background: "var(--bg-secondary)", padding: "28px", borderRadius: "16px",
+                width: "440px", border: "1px solid var(--glass-border)",
+                display: "flex", flexDirection: "column", gap: "18px",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.5)"
+              }}>
+                {/* Header */}
+                <div>
+                  <h3 style={{ margin: "0 0 4px 0", color: "var(--text)", fontSize: "1.2rem" }}>
+                    ⭐ Add to Watchlist
+                  </h3>
+                  <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                    {form.equity_name} — Live Price: <strong style={{ color: "var(--text)" }}>
+                      ₹{liveClose.toFixed(2)}
+                    </strong>
+                  </p>
+                </div>
+
+                {/* Shares input */}
+                <div>
+                  <label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "0.9rem" }}>
+                    Number of Shares Owned
+                  </label>
+                  <input
+                    type="number" min="0" step="1"
+                    value={sharesToBuy}
+                    onChange={e => setSharesToBuy(e.target.value)}
+                    placeholder="0 = just watch (no P&L tracking)"
+                    style={{
+                      width: "100%", padding: "10px 12px", boxSizing: "border-box",
+                      background: "var(--bg-primary)", color: "var(--text)",
+                      border: "1px solid var(--glass-border)", borderRadius: "8px",
+                      fontSize: "0.95rem"
+                    }}
+                  />
+                </div>
+
+                {/* Buy price input */}
+                <div>
+                  <label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "0.9rem" }}>
+                    Average Buy Price (₹)
+                  </label>
+                  <input
+                    type="number" step="0.01" min="0"
+                    value={buyPrice}
+                    onChange={e => setBuyPrice(e.target.value)}
+                    placeholder="e.g. 1500.00"
+                    style={{
+                      width: "100%", padding: "10px 12px", boxSizing: "border-box",
+                      background: "var(--bg-primary)", color: "var(--text)",
+                      border: "1px solid var(--glass-border)", borderRadius: "8px",
+                      fontSize: "0.95rem"
+                    }}
+                  />
+                </div>
+
+                {/* Live P&L Preview */}
+                {sharesNum > 0 && buyPriceNum > 0 && (
+                  <div style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid var(--glass-border)",
+                    borderRadius: "10px", padding: "14px",
+                    display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px"
+                  }}>
+                    <div>
+                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: "3px" }}>Invested Value</div>
+                      <div style={{ fontWeight: 700, fontSize: "1rem", color: "var(--text)" }}>
+                        ₹{investedValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: "3px" }}>Current Value</div>
+                      <div style={{ fontWeight: 700, fontSize: "1rem", color: "var(--text)" }}>
+                        ₹{currentValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: "3px" }}>Unrealised P&amp;L</div>
+                      <div style={{ fontWeight: 700, fontSize: "1.2rem", color: pnlColor }}>
+                        {pnlPreview >= 0 ? "+" : ""}₹{pnlPreview.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <span style={{ fontSize: "0.8rem", marginLeft: "8px", opacity: 0.8 }}>
+                          ({buyPriceNum > 0 ? ((pnlPreview / investedValue) * 100).toFixed(2) : 0}%)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: "12px" }}>
+                  <button type="button" onClick={() => setShowPortfolioModal(false)} className="btn-secondary" style={{ flex: 1 }}>
+                    Cancel
+                  </button>
+                  <button type="button" onClick={async () => {
+                    try {
+                      await watchlistAPI.add(form.equity_name, Number(sharesToBuy), Number(buyPrice));
+                      setWatchlistStatus("Added! ✓");
+                      setIsInWatchlist(true);
+                      setShowPortfolioModal(false);
+                      setTimeout(() => setWatchlistStatus(""), 3000);
+                    } catch (err) {
+                      setWatchlistStatus("Error ✗");
+                      setShowPortfolioModal(false);
+                    }
+                  }} className="btn-primary" style={{ flex: 1 }}>
+                    ⭐ Save to Watchlist
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
 
 

@@ -62,7 +62,7 @@ class Config:
     # CORS
     CORS_ORIGINS = os.environ.get(
         "CORS_ORIGINS",
-        "http://localhost:3000,https://stock-prediction-system-seven.vercel.app"
+        "http://localhost:3000,https://stock-prediction-system-seven.vercel.app,https://stock-prediction-system-tau.vercel.app"
     ).split(",")
 
     # SMTP Settings

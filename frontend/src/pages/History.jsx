@@ -1,6 +1,27 @@
 import React, { useEffect, useState } from "react";
 import { historyAPI } from "../api/api";
 
+// Format UTC string from SQLite → IST display
+function formatIST(utcStr) {
+  if (!utcStr) return "—";
+  try {
+    const normalized = utcStr.trim().replace(" ", "T") + (utcStr.includes("Z") ? "" : "Z");
+    const dt = new Date(normalized);
+    if (isNaN(dt.getTime())) return utcStr;
+    return dt.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch {
+    return utcStr;
+  }
+}
+
 export default function History() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +109,7 @@ export default function History() {
                     {r.direction === "UP" ? "▲ UP" : "▼ DOWN"}
                   </span>
                 </td>
-                <td style={{ color: "var(--text-muted)", fontSize: "0.9em" }}>{new Date(r.predicted_at).toLocaleString()}</td>
+                <td style={{ color: "var(--text-muted)", fontSize: "0.9em" }}>{formatIST(r.predicted_at)}</td>
                 <td>
                   <button 
                     className="btn-delete"
