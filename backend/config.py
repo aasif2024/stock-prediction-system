@@ -30,7 +30,10 @@ class Config:
 
     # ── Database ──────────────────────────────────────────────────────────────
     # If DATABASE_URL is provided (Supabase/PostgreSQL), use postgres.
-    DATABASE_URL = os.environ.get("DATABASE_URL", "")
+    _raw_db_url = os.environ.get("DATABASE_URL", "")
+    if "?pgbouncer=true" in _raw_db_url:
+        _raw_db_url = _raw_db_url.replace("?pgbouncer=true", "")
+    DATABASE_URL = _raw_db_url
 
     # Auto-detect: if DATABASE_URL is set, override DATABASE_TYPE to postgres
     _default_db_type = "postgres" if os.environ.get("DATABASE_URL") else "sqlite"
@@ -45,8 +48,9 @@ class Config:
     MYSQL_SSL = os.environ.get("MYSQL_SSL", "false").lower() == "true"
 
     # SQLite (local dev fallback)
+    # Points to the root-level database/ folder (one level up from backend/)
     _sqlite_env = os.environ.get("SQLITE_PATH", "")
-    SQLITE_PATH = Path(_sqlite_env) if _sqlite_env else BASE_DIR / "database" / "stock_prediction.db"
+    SQLITE_PATH = Path(_sqlite_env) if _sqlite_env else BASE_DIR.parent / "database" / "stock_prediction.db"
 
     # ML artifacts
     ML_MODEL_DIR = BASE_DIR / "ml_model"
