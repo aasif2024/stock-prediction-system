@@ -35,7 +35,7 @@ def _get_local_dataset() -> pd.DataFrame:
     if _local_dataset is not None:
         return _local_dataset
 
-    dataset_path = Path(__file__).resolve().parent.parent.parent / "machine_learning" / "data" / "sample_dataset.xlsx"
+    dataset_path = Path(__file__).resolve().parent.parent / "ml_model" / "sample_dataset.xlsx"
     if not dataset_path.exists():
         print(f"Warning: Local dataset not found at {dataset_path}")
         return pd.DataFrame()
